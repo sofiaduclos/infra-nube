@@ -9,7 +9,7 @@ resource "aws_s3_bucket" "user_documents" {
 
 // Configure the S3 bucket for website hosting
 resource "aws_s3_bucket_website_configuration" "website" {
-  count  = var.is_static_site ? 1 : 0  // Create configuration only if is_static_site is true
+  count  = var.is_static_site || var.is_pwa ? 1 : 0  // Create configuration only if is_static_site is true
   bucket = aws_s3_bucket.user_documents.id
 
   index_document {
@@ -35,7 +35,7 @@ resource "aws_s3_bucket_public_access_block" "user_documents_public_access" {
 
 // Define the bucket policy only if is_static_site is true
 resource "aws_s3_bucket_policy" "bucket_policy" {
-  count  = var.is_static_site ? 1 : 0  // Create policy only if is_static_site is true
+  count  = var.is_static_site || var.is_pwa ? 1 : 0  // Create policy only if is_static_site is true
   bucket = aws_s3_bucket.user_documents.id
 
   policy = <<EOF
@@ -60,4 +60,13 @@ resource "aws_s3_bucket_object" "static_page" {
   key    = var.index_document
   source = var.static_page_path
   content_type = "text/html"
+}
+
+// Upload PWA-specific files if is_pwa is true
+resource "aws_s3_bucket_object" "pwa_files" {
+  for_each = var.is_pwa ? fileset(var.pwa_file_path_folder, "**") : toset([])
+  source   = "${var.pwa_file_path_folder}/${each.value}"
+  bucket   = aws_s3_bucket.user_documents.id
+  key      = each.value
+  content_type = "application/javascript"
 }
