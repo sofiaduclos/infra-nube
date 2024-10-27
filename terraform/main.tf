@@ -72,3 +72,29 @@ module "pwa" {
 output "static_site_url" {
   value = module.static_site.url
 }
+
+
+
+# Create the Auto Scaling Group
+module "ec2" {
+  source        = "./modules/ec2"
+  ami_id       = "ami-06b21ccaeff8cd686"  # Replace with a valid AMI ID
+  instance_type = "t3.micro"
+  key_name      = "your-key-name"  # Replace with your key name
+  subnet_id     = aws_subnet.main.id
+}
+
+# Create the ELB module
+module "elb" {
+  source              = "./modules/elb"  # Path to your ELB module
+  name                = "my-load-balancer"
+  subnets             = [aws_subnet.main.id]
+  security_groups     = ["sg-12345678"]  # Replace with your security group IDs
+  target_instance_arns = module.ec2.target_instance_arns  # Register the ASG instances
+  vpc_id              = aws_vpc.main.id
+}
+
+# Output the Load Balancer URL
+output "load_balancer_url" {
+  value = module.elb.load_balancer_dns_name
+}

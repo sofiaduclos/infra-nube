@@ -1,8 +1,7 @@
 resource "aws_launch_template" "api_instance" {
   name_prefix   = "api-instance"
   image_id      = var.ami_id
-  instance_type = var.instance_type
-  key_name      = var.key_name
+  instance_type = "t3.micro"  # Use t2.micro for free tier
 
   block_device_mappings {
     device_name = "/dev/xvda"
@@ -26,6 +25,6 @@ resource "aws_autoscaling_group" "api_asg" {
 
   vpc_zone_identifier = [var.subnet_id]
   min_size            = 1
-  max_size            = 5  # Para escalar según la demanda
+  max_size            = 2  # Adjusted to stay within free tier limits
   desired_capacity    = 1
 }
