@@ -1,20 +1,21 @@
 variable "ami_id" {
-  type = string
-  description = "La AMI para la instancia EC2"
+  type        = string
+  description = "The AMI ID for the EC2 instance"
 }
 
 variable "instance_type" {
-  type = string
-  description = "El tipo de instancia EC2"
-  default = "t3.micro"
+  type        = string
+  description = "The instance type for the EC2 instance"
+  default     = "t3.micro"  # Default instance type
 }
 
-variable "key_name" {
-  type = string
-  description = "Llave SSH para acceder a la instancia"
-}
 
 variable "subnet_id" {
-  type = string
-  description = "El ID de la subred"
+  type        = string
+  description = "The subnet ID where the instance will be launched"
+}
+
+variable "security_group_id" {
+  type        = string
+  description = "The security group ID to associate with the EC2 instance"
 }

@@ -42,6 +42,15 @@ resource "aws_subnet" "main" {
   }
 }
 
+resource "aws_subnet" "main2" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = "us-east-1b"
+  tags = {
+    Name = "MainSubnet2"
+  }
+}
+
 
 resource "random_string" "random" {
   length  = 8
@@ -73,34 +82,75 @@ module "pwa" {
 
 
 
-output "static_site_url" {
-  value = module.static_site.url
+# Create a Security Group for the LB
+module "securityGroup" {
+  source = "./modules/securityGroup"
+  vpc_id = aws_vpc.main.id
 }
 
-output "pwa_url" {
-  value = module.pwa.url
+
+resource "aws_lb_target_group" "api_target_group" {
+  name     = "api-target-group"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.main.id  # Ensure you pass the VPC ID
+
+  health_check {
+    port     = 80
+    protocol = "HTTP"
+  }
+
+  tags = {
+    Name = "api-target-group"
+  }
 }
 
-# # Create the Auto Scaling Group
-# module "ec2" {
-#   source        = "./modules/ec2"
-#   ami_id       = "ami-06b21ccaeff8cd686"  # Replace with a valid AMI ID
-#   instance_type = "t3.micro"
-#   key_name      = "your-key-name"  # Replace with your key name
-#   subnet_id     = aws_subnet.main.id
-# }
 
-# # Create the ELB module
-# module "elb" {
-#   source              = "./modules/elb"  # Path to your ELB module
-#   name                = "my-load-balancer"
-#   subnets             = [aws_subnet.main.id]
-#   security_groups     = ["sg-12345678"]  # Replace with your security group IDs
-#   target_instance_arns = module.ec2.target_instance_arns  # Register the ASG instances
-#   vpc_id              = aws_vpc.main.id
-# }
 
-# # Output the Load Balancer URL
-# output "load_balancer_url" {
-#   value = module.elb.load_balancer_dns_name
-# }
+# Create the Elastic Load Balancer
+module "lb" {
+  source               = "./modules/lb"
+  name                 = "basic-lb"
+  security_groups      = [module.securityGroup.id]
+  subnet               = [aws_subnet.main.id, aws_subnet.main2.id]
+  target_group_arn     = aws_lb_target_group.api_target_group.arn
+}
+
+
+
+
+# Create the EC2 template
+module "ec2" {
+  source        = "./modules/ec2"
+  ami_id       = "ami-06b21ccaeff8cd686"
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.main.id
+  security_group_id = module.securityGroup.id
+}
+
+# Create the Auto Scaling Group
+resource "aws_autoscaling_group" "api_asg" {
+  availability_zones = ["us-east-1a"]  # Use both AZs for high availability
+  desired_capacity   = 1
+  max_size           = 1
+  min_size           = 1
+  target_group_arns = [aws_lb_target_group.api_target_group.arn]  # Register ASG instances with the target group
+
+  launch_template {
+    id      = module.ec2.launch_template_id  # Reference the launch template from the EC2 module
+    version = "$Latest"
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "api-instance"
+    propagate_at_launch = true
+  }
+}
+
+# Attach the ASG to the LB
+resource "aws_autoscaling_attachment" "asg_attachment" {
+  autoscaling_group_name = aws_autoscaling_group.api_asg.name
+  lb_target_group_arn     = aws_lb_target_group.api_target_group.arn
+}
+

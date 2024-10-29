@@ -1,8 +1,24 @@
+resource "tls_private_key" "key_gen" {  
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "local_file" "private_key" {
+  filename = "${path.module}/api-instance.pem"
+  content  = tls_private_key.key_gen.private_key_openssh
+}
+
+resource "aws_key_pair" "key" {  
+  key_name   = "api-instance-key"
+  public_key = tls_private_key.key_gen.public_key_openssh
+}
+
+
 resource "aws_launch_template" "api_instance" {
   name_prefix   = "api-instance"
   image_id      = var.ami_id
-  instance_type = "t3.micro"  # Use t2.micro for free tier
-
+  instance_type = var.instance_type  # Use a variable for instance type
+  key_name      = aws_key_pair.key.key_name
   block_device_mappings {
     device_name = "/dev/xvda"
     ebs {
@@ -14,17 +30,7 @@ resource "aws_launch_template" "api_instance" {
   network_interfaces {
     associate_public_ip_address = true
     subnet_id                   = var.subnet_id
+    security_groups      = [var.security_group_id]
   }
 }
 
-resource "aws_autoscaling_group" "api_asg" {
-  launch_template {
-    id      = aws_launch_template.api_instance.id
-    version = "$Latest"
-  }
-
-  vpc_zone_identifier = [var.subnet_id]
-  min_size            = 1
-  max_size            = 2  # Adjusted to stay within free tier limits
-  desired_capacity    = 1
-}
