@@ -2,6 +2,36 @@ provider "aws" {
   region = "us-east-1"
 }
 
+# Create a Route Table
+resource "aws_route_table" "route_table" {
+  vpc_id = aws_vpc.main.id
+}
+ 
+resource "aws_route" "default_route" {
+  route_table_id         = aws_route_table.route_table.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.main.id
+
+  depends_on = [ 
+    aws_route_table.route_table
+  ]
+}
+# Start of Selection
+resource "aws_route_table_association" "route_table_association" {
+  for_each      = { for subnet in [aws_subnet.main, aws_subnet.main2] : subnet.id => subnet }
+  
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.route_table.id
+
+  depends_on = [ 
+    aws_route_table.route_table
+  ]
+}
+
+ 
+
+
+
 # Create a VPC
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
@@ -20,17 +50,6 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# Create a Route Table
-resource "aws_route_table" "main" {
-  vpc_id = aws_vpc.main.id
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
-  }
-  tags = {
-    Name = "MainRouteTable"
-  }
-}
 
 # Create a Subnet
 resource "aws_subnet" "main" {
@@ -152,5 +171,24 @@ resource "aws_autoscaling_group" "api_asg" {
 resource "aws_autoscaling_attachment" "asg_attachment" {
   autoscaling_group_name = aws_autoscaling_group.api_asg.name
   lb_target_group_arn     = aws_lb_target_group.api_target_group.arn
+}
+
+
+resource "aws_db_subnet_group" "rds_subnet_group" {
+  name       = "rds-subnet-group"
+  subnet_ids = [aws_subnet.main.id, aws_subnet.main2.id]
+
+  tags = {
+    Name = "My DB subnet group"
+  }
+}
+
+module "rds" {
+  source = "./modules/rds"
+  db_name = "infra"
+  db_username = "jabr7"
+  db_password = "123456789"
+  subnet_group_name = aws_db_subnet_group.rds_subnet_group.name
+  security_group_id = module.securityGroup.id
 }
 
