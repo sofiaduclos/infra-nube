@@ -18,9 +18,9 @@ resource "aws_route" "default_route" {
 }
 # Start of Selection
 resource "aws_route_table_association" "route_table_association" {
-  for_each      = { for subnet in [aws_subnet.main, aws_subnet.main2] : subnet.id => subnet }
-  
-  subnet_id      = each.value.id
+  count = 2  # Asumiendo que tienes exactamente dos subredes
+
+  subnet_id      = [aws_subnet.main.id, aws_subnet.main2.id][count.index]
   route_table_id = aws_route_table.route_table.id
 
   depends_on = [ 
@@ -192,3 +192,15 @@ module "rds" {
   security_group_id = module.securityGroup.id
 }
 
+
+# S3 Module for User Files
+module "user_files" {
+  source        = "./modules/s3"
+  bucket_name   = "user-files-bucket-${random_string.random.result}"
+  is_static_site = false
+  is_pwa        = false
+  index_document = ""
+  error_document = ""
+  static_page_path = ""
+  pwa_file_path_folder = ""
+}
