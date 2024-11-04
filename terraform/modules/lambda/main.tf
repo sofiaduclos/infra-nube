@@ -8,10 +8,6 @@ resource "aws_lambda_function" "transaction_processor" {
   s3_bucket     = aws_s3_bucket.lambda_bucket.bucket
   s3_key        = "path/to/your/code.zip" # Adjust this to the actual path
 
-  environment {
-    # You can define environment variables here
-    ENV_VAR_NAME = "value"
-  }
 
   # Define timeout and memory settings
   timeout       = 30

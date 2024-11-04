@@ -193,14 +193,11 @@ module "rds" {
 }
 
 
-# S3 Module for User Files
-module "user_files" {
-  source        = "./modules/s3"
-  bucket_name   = "user-files-bucket-${random_string.random.result}"
-  is_static_site = false
-  is_pwa        = false
-  index_document = ""
-  error_document = ""
-  static_page_path = ""
-  pwa_file_path_folder = ""
+module "user_info" {
+  source                 = "./modules/replicatedBucket"
+  source_bucket_name     = "user-info-${random_string.random.result}"
+  destination_bucket_name = "user-info-replica-${random_string.random.result}"
+  source_region          = "us-east-1"
+  destination_region     = "us-east-1"
+  iam_role_name          = "replication-role"
 }
