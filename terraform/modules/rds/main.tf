@@ -8,4 +8,6 @@ resource "aws_db_instance" "postgres" {
   db_subnet_group_name = var.subnet_group_name
   vpc_security_group_ids = [var.security_group_id]
   skip_final_snapshot    = true
+  backup_retention_period = 1
+  backup_window = "02:00-03:00"
 }
