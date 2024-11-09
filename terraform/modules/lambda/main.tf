@@ -119,3 +119,53 @@ resource "aws_iam_policy_attachment" "attach_s3_access_policy" {
   roles      = [aws_iam_role.iam_for_lambda.name]
   policy_arn = aws_iam_policy.lambda_s3_access_policy.arn
 }
+
+
+
+
+
+# Create an IAM policy for S3 upload permissions
+resource "aws_iam_policy" "s3_uploader_policy" {
+  name        = "S3UploaderPolicy"
+  description = "Policy to allow uploading objects to the Lambda S3 bucket"
+  policy      = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = [
+          "s3:PutObject",
+          "s3:PutObjectAcl"
+        ]
+        Resource = "${aws_s3_bucket.lambda_bucket.arn}/*"
+      }
+    ]
+  })
+}
+
+# Create an IAM user for uploading to S3
+resource "aws_iam_user" "s3_uploader_user" {
+  name = "s3_uploader_user"
+}
+
+# Attach the S3 uploader policy to the user
+resource "aws_iam_policy_attachment" "attach_s3_uploader_policy" {
+  name       = "AttachS3UploaderPolicyToUser"
+  policy_arn = aws_iam_policy.s3_uploader_policy.arn
+  users      = [aws_iam_user.s3_uploader_user.name]
+}
+
+# Create access keys for the S3 uploader user
+resource "aws_iam_access_key" "s3_uploader_access_key" {
+  user = aws_iam_user.s3_uploader_user.name
+}
+
+# Write the credentials to a local file
+resource "local_file" "write_s3_credentials" {
+  content = <<-EOF
+    S3 Uploader Access Key ID: ${aws_iam_access_key.s3_uploader_access_key.id}
+    S3 Uploader Secret Access Key: ${aws_iam_access_key.s3_uploader_access_key.secret}
+  EOF
+
+  filename = "${path.module}/lambda_credentials.txt"
+}
