@@ -198,6 +198,11 @@ module "user_info" {
   source_bucket_name     = "user-info-${random_string.random.result}"
   destination_bucket_name = "user-info-replica-${random_string.random.result}"
   source_region          = "us-east-1"
-  destination_region     = "us-east-1"
+  destination_region     = "us-west-2"
   iam_role_name          = "replication-role"
+}
+
+
+module "lambda_function" {
+  source = "./modules/lambda"
 }
