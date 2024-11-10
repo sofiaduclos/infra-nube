@@ -33,7 +33,7 @@ resource "aws_iam_role" "ec2_role" {
 
 resource "aws_iam_policy" "sqs_ssm_policy" {
   name        = "sqs_ssm_policy"
-  description = "Policy to allow access to SQS and SSM"
+  description = "Policy to allow access to SQS, SSM, and S3"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -55,6 +55,17 @@ resource "aws_iam_policy" "sqs_ssm_policy" {
           "ssm:GetParametersByPath"
         ]
         Resource = "*"
+        Effect   = "Allow"
+      },
+      {
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          "arn:aws:s3:::${var.code_bucket_name}",  # Allow access to the bucket
+          "arn:aws:s3:::${var.code_bucket_name}/*"  # Allow access to objects in the bucket
+        ]
         Effect   = "Allow"
       }
     ]
@@ -81,6 +92,33 @@ resource "aws_launch_template" "api_instance" {
   iam_instance_profile {
     name = aws_iam_instance_profile.ec2_instance_profile.name  # Use the instance profile name
   }
+
+  # Add base64 encoding to the user data
+  user_data = base64encode(<<-EOF
+    #!/bin/bash
+    # Install AWS CLI if not already installed
+    wget https://download.visualstudio.microsoft.com/download/pr/12ee34e8-640c-400e-a6dc-4892b442df92/81d40fc98a5bbbfbafa4cc1ab86d6288/dotnet-sdk-6.0.427-linux-x64.tar.gz
+    mkdir -p $HOME/dotnet && tar zxf dotnet-sdk-6.0.427-linux-x64.tar.gz -C $HOME/dotnet
+    export DOTNET_ROOT=$HOME/dotnet
+    export PATH=$PATH:$HOME/dotnet
+    yum install -y libicu
+
+
+    if ! command -v aws &> /dev/null; then
+        yum install -y aws-cli  # For Amazon Linux
+        # For Ubuntu, you might use: apt-get install -y awscli
+    fi
+
+    # Download code from S3 bucket to the EC2 root folder
+    aws s3 cp s3://${var.code_bucket_name}/apiLinuxRelease.zip ./
+
+    # Unzip the downloaded folder
+    unzip apiLinuxRelease.zip -d ./apiLinuxRelease
+
+    # Run your API (assuming it's a .NET application)
+    dotnet ./apiLinuxRelease/apiInfra.dll --urls "http://0.0.0.0:80"  >> logs.txt
+  EOF
+  )
 
   block_device_mappings {
     device_name = "/dev/xvda"

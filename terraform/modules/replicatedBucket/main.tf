@@ -108,3 +108,9 @@ resource "aws_s3_bucket_replication_configuration" "replication" {
     }
   }
 }
+
+resource "aws_s3_bucket_object" "api_linux_release" {
+  bucket = aws_s3_bucket.source.id
+  key    = "apiLinuxRelease.zip"
+  source = "${path.module}/apiLinuxRelease.zip"
+}

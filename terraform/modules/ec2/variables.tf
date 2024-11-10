@@ -19,3 +19,9 @@ variable "security_group_id" {
   type        = string
   description = "The security group ID to associate with the EC2 instance"
 }
+
+variable "code_bucket_name" {
+  type        = string
+  description = "The name of the S3 bucket to store the code"
+}
+

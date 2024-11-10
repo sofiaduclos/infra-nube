@@ -145,6 +145,9 @@ module "ec2" {
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.main.id
   security_group_id = module.securityGroup.id
+  code_bucket_name = "user-info-${random_string.random.result}"
+
+  depends_on = [module.user_info]  # Ensure user_info module is completed first
 }
 
 # Create the Auto Scaling Group
@@ -165,6 +168,8 @@ resource "aws_autoscaling_group" "api_asg" {
     value               = "api-instance"
     propagate_at_launch = true
   }
+
+  depends_on = [module.user_info]  # Ensure user_info module is completed first
 }
 
 # Attach the ASG to the LB
@@ -210,3 +215,4 @@ module "lambda_function" {
 module "sqs" {
   source = "./modules/sqs"
 }
+
