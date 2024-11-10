@@ -216,3 +216,9 @@ module "sqs" {
   source = "./modules/sqs"
 }
 
+module "notification_lambda_and_SNS" {
+  source = "./modules/notification_lambda_and_SNS"
+  notification_email = "joaquinbonifacino7@gmail.com"
+  sqs_queue_arn = module.sqs.sqs_queue_arn
+}
+
