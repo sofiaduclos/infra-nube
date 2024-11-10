@@ -206,3 +206,7 @@ module "user_info" {
 module "lambda_function" {
   source = "./modules/lambda"
 }
+
+module "sqs" {
+  source = "./modules/sqs"
+}
